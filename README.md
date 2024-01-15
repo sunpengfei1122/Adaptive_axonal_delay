@@ -54,3 +54,20 @@ Axonal delay for spiking spoken word recognition [Paper](https://www.frontiersin
   year={2023},
   publisher={Frontiers Media SA}}
 ```
+
+SLAYER  [Paper](https://proceedings.neurips.cc/paper_files/paper/2018/hash/82f2b308c3b01637c607ce05f52a2fed-Abstract.html)
+
+```bibtex
+@InCollection{Shrestha2018,
+  author    = {Shrestha, Sumit Bam and Orchard, Garrick},
+  title     = {{SLAYER}: Spike Layer Error Reassignment in Time},
+  booktitle = {Advances in Neural Information Processing Systems 31},
+  publisher = {Curran Associates, Inc.},
+  year      = {2018},
+  editor    = {S. Bengio and H. Wallach and H. Larochelle and K. Grauman and N. Cesa-Bianchi and R. Garnett},
+  pages     = {1419--1428},
+  url       = {http://papers.nips.cc/paper/7415-slayer-spike-layer-error-reassignment-in-time.pdf},
+}
+```
+
+
