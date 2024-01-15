@@ -11,7 +11,7 @@ Our delay module is based on [SLayer framework](https://github.com/bamsumit/slay
 you can easily implement our delay module and adaptive training scheduler.
 
 ## **Papers**
-Axonal delay module [Paper](https://www.frontiersin.org/articles/10.3389/fnins.2023.1275944/full)
+Axonal delay module [Paper] (https://ieeexplore.ieee.org/abstract/document/9747411)
 
 ```bibtex
 @inproceedings{sun2022axonal,
@@ -24,7 +24,7 @@ Axonal delay module [Paper](https://www.frontiersin.org/articles/10.3389/fnins.2
 }
 ```
 
-Adaptive axonal delay module [Paper]([https://www.frontiersin.org/articles/10.3389/fnins.2023.1275944/full](https://ieeexplore.ieee.org/abstract/document/10094768))
+Adaptive axonal delay module [Paper](https://ieeexplore.ieee.org/abstract/document/10094768)
 
 ```bibtex
 @inproceedings{sun2023adaptive,
