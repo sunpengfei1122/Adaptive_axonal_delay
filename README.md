@@ -5,6 +5,12 @@ Adaptive Axonal Delay Training for Spiking Neural Networks
 
 Learnable axonal delay module with adaptive training scheduler to adjust the caps of axonal delays of each layer.
 
+# Result
+```
+SHD           92.45%
+NTDIDIGITS    95.09%
+```
+
 ## **Usage**
 
 Our delay module is based on [SLayer framework](https://github.com/bamsumit/slayerPytorch), after downloading the Slayer framework, 
