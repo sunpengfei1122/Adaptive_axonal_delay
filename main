@@ -1,0 +1,394 @@
+
+import sys
+
+import os
+
+import h5py
+
+import seaborn as sns
+
+import torch
+
+import torch.nn as nn
+
+import torchvision
+
+from torch.utils import data
+
+from utils import get_shd_dataset
+
+from datetime import datetime
+
+import numpy as np
+
+
+
+if __name__ == '__main__':
+
+    import matplotlib
+
+    matplotlib.use('Agg')
+
+
+CURRENT_TEST_DIR = os.path.dirname(os.path.realpath(__file__))
+
+sys.path.append(CURRENT_TEST_DIR + "/../../src")
+
+import matplotlib.cm as cm
+
+# Dataset definition
+
+
+
+
+
+def npy_loader(path):
+
+    sample = torch.from_numpy(np.load(path))
+
+    return sample
+
+
+
+class shdDataset(Dataset):
+
+    # Characterizes a dataset for PyTorch
+
+    def __init__(self, data_paths, transform=None):
+
+        self.data_paths = data_paths
+
+        self.samples = np.loadtxt(self.data_paths+'.txt').astype('int')
+
+        self.transform = transform
+
+
+    def __len__(self):
+
+        return self.samples.shape[0]
+
+
+    def __getitem__(self, index):  
+
+        inputindex = self.samples[index, 0]
+
+        label = self.samples[index, 1]
+
+        path = self.data_paths + '/'+str(inputindex.item()) + '.npy'
+
+        input = torch.from_numpy(np.load(path))
+
+        label = torch.from_numpy(np.asarray(label))
+      
+        emptytensor = torch.zeros((1,1,700,400))
+
+        yy = input.transpose(1,0).nonzero()
+
+        emptytensor[0,0,yy[:,0],yy[:,1]]  = 1      
+
+        desiredClass = torch.zeros((20, 1, 1, 1))
+
+        desiredClass[label,...] = 1
+
+        return emptytensor, desiredClass, label
+
+
+
+
+
+
+
+
+
+
+# Network definition
+
+class Network(torch.nn.Module):
+
+    def __init__(self, netParams):
+
+        super(Network, self).__init__()
+
+        # initialize slayer
+
+        slayer = snn.layer(netParams['neuron'], netParams['simulation'])
+
+        self.slayer = slayer
+
+        # define network functions
+
+        self.fc1   = torch.nn.utils.weight_norm(slayer.dense( 700, 128), name='weight')
+
+        self.fc2   = torch.nn.utils.weight_norm(slayer.dense(128, 128), name='weight')
+
+        self.fc3   = torch.nn.utils.weight_norm(slayer.dense(128,  20), name='weight')
+
+        self.delay1 = slayer.delay(128)
+
+        self.delay2 = slayer.delay(128)
+
+
+
+    def forward(self, spike):
+
+        spike = spike.reshape((spike.shape[0], -1, 1, 1, spike.shape[-1]))
+
+        spike = self.slayer.spike(self.fc1(self.slayer.psp(spike)))
+
+        spike = self.delay1(spike)
+
+        spike = self.slayer.spike(self.fc2(self.slayer.psp(spike)))
+
+        spike = self.delay2(spike)
+      
+        spike = self.slayer.spike(self.fc3(self.slayer.psp(spike)))
+
+        return spike
+
+    def clamp(self,thea1, thea2 ):
+
+        self.delay1.delay.data.clamp_(0, thea1)
+
+        self.delay2.delay.data.clamp_(0, thea2)
+
+
+
+
+        
+
+if __name__ == '__main__':
+
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    #parser.add_argument('-gpu', type=int, default=[0] )
+
+    parser.add_argument('-seed', type=int, default=2256 )
+
+    parser.add_argument('-f', type=str, default='test2' )    
+
+    parser.add_argument('-l', type=str, default='testL2' )
+
+    args = parser.parse_args()
+
+    trainedFolder = args.f
+
+    #'Trained01'
+
+    logsFolder    = args.l
+
+    os.makedirs(trainedFolder, exist_ok=True)
+
+    os.makedirs(logsFolder   , exist_ok=True)
+
+    # Read network configuration
+
+    netParams = snn.params('network.yaml')
+
+    # Define the cuda device to run the code on. 
+
+    device = torch.device('cuda')
+
+    # define network instance
+
+    #net = Network(netParams).to(device)
+
+    #module = net
+    # # Use multiple GPU's
+
+    deviceIds = [0, 1, 2, 3]
+
+    net = torch.nn.DataParallel(Network1(netParams).to(device), device_ids=deviceIds)
+
+    module = net.module
+
+    # Create snn loss instance.
+
+    error = spikeLoss(netParams).to(device)
+
+    # Define optimizer module
+
+    optimizer = snn.utils.optim.Nadam(net.parameters(), lr = 0.1)
+
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[800], gamma=0.5)
+
+    # Dataset and dataLoader instances.
+
+    trainingSet = shdDataset('data/train')
+
+    trainLoader = DataLoader(dataset=trainingSet, batch_size=128, shuffle=True, num_workers=64)
+
+    testingSet = shdDataset('data/test')
+
+    testLoader = DataLoader(dataset=testingSet, batch_size=128, shuffle=True, num_workers=64)
+
+    # Learning stats instance.
+
+    stats = snn.utils.stats()
+
+    total = sum([param.nelement() for param in module.parameters()])
+
+    print("Number of parameter: %.2fM" % (total))
+
+    # Main loop
+
+    for epoch in range(1000):
+
+        tSt = datetime.now()
+
+        # Training loop.
+        
+        for i, (input, target, label) in enumerate(trainLoader, 0):
+
+            net.train()
+
+            # Move the input and target to correct GPU.
+
+            input  = input.to(device)
+
+            target = target.to(device) 
+
+            # Forward pass of the network.
+
+            output = net.forward(input)
+         
+            # Gather the training stats.
+
+            stats.training.correctSamples += torch.sum( snn.predict.getClass(output) == label ).data.item()
+
+            stats.training.numSamples     += len(label)         
+
+            # Calculate loss.
+
+            loss = error.spikeRate(output, target)  
+
+            # Reset gradients to zero.
+
+            optimizer.zero_grad()
+            
+            # Backward pass of the network.
+
+            loss.backward()   
+
+            # Update weights.
+
+            optimizer.step()
+
+            # Clamp delays
+
+            if epoch <= 250:
+
+                module.clamp1()
+
+                thea1 = 64
+
+                thea2 = 64
+
+            else:
+
+                update1 += 1
+
+                update2 += 1
+
+                for name, parameters in net.named_parameters():
+
+                    if (name == 'module.delay1.delay' and update1>150) :
+
+                        sorted1,_ = torch.sort(torch.floor(parameters.detach().squeeze()))
+
+                        thea1 = torch.max(torch.floor(parameters.detach().squeeze()))
+
+                        if sorted1[108] > (thea1-5):  # 95% windows 5
+
+                            thea1 += 1
+
+                            update1 = 0
+
+                    elif (name == 'module.delay2.delay' and update2>150):
+
+                        sorted2,_ = torch.sort(torch.floor(parameters.detach().squeeze()))                    
+
+                        thea2=torch.max(torch.floor(parameters.detach().squeeze()))
+
+                        if sorted2[108] > (thea2-5):  # 20%
+
+                            thea2 += 1
+
+                            update2 = 0
+
+                    else:
+
+                        pass 
+
+                module.clamp(thea1=thea1,thea2=thea2)
+
+            # Gather training loss stats.
+
+            stats.training.lossSum += loss.cpu().data.item()
+
+            # Display training stats.
+
+            stats.print(
+
+                epoch, i,      
+            )   
+
+        # Testing loop.
+
+        # Same steps as Training loops except loss backpropagation and weight update.
+
+        for i, (input, target, label) in enumerate(testLoader, 0):
+
+            net.eval()
+
+            with torch.no_grad():
+
+                input  = input.to(device)
+
+                target = target.to(device) 
+
+                output = net.forward(input
+            stats.testing.correctSamples += torch.sum( snn.predict.getClass(output) == label ).data.item()
+
+            stats.testing.numSamples     += len(label)
+
+            loss = error.spikeRate(output, target)
+
+            stats.testing.lossSum += loss.cpu().data.item()            
+
+            stats.print(
+
+                epoch, i,
+
+            )    
+
+        # Update stats.
+
+        stats.update()
+
+        stats.plot(saveFig=True, path = trainedFolder + '/')
+
+        module.gradFlow(path= trainedFolder + '/')
+
+        if stats.testing.bestAccuracy is True:  torch.save(module.state_dict(), trainedFolder + '/NTIDIGITS.pt') 
+
+        if epoch%10 == 0:
+
+            torch.save(
+
+                {
+
+                    'net': module.state_dict(),
+
+                    'optimizer': optimizer.state_dict(),
+
+                }, 
+
+                logsFolder + '/checkpoint%d.pt'%(epoch)
+
+            )
+
+            
+
+        stats.save(trainedFolder + '/')
