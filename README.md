@@ -3,7 +3,7 @@ Adaptive Axonal Delay Training for Spiking Neural Networks
 
 ## **What is this repository for?**
 
-Learnable axonal delay module with adaptive training scheduler to adjust the caps of axonal delays of each layer.
+A learnable axonal delay module is implemented with an adaptive training scheduler that dynamically adjusts the caps of axonal delays for each layer. The 'main.py' file provides an example of how to train the SHD dataset using two feed-forward SNNs with neuron-wise delay sharing, achieving a performance level of approximately 92.4%.
 
 # Result
 ```
